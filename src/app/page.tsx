@@ -745,15 +745,58 @@ export default function MessManagerApp() {
             All Members Breakdown
           </h3>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Mobile View: Box Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 md:hidden">
+          {monthSummary.memberSummaries.map((ms) => (
+            <div key={ms.memberId} className="bg-card border border-border/50 rounded-xl p-4 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between border-b border-border/30 pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-chart-4/80 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                    {ms.memberName.charAt(0)}
+                  </div>
+                  <span className="font-semibold text-base">{ms.memberName}</span>
+                </div>
+                <div className={cn('font-bold text-lg', ms.balance >= 0 ? 'text-success' : 'text-destructive')}>
+                  {formatCurrency(ms.balance)}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground text-[11px] uppercase tracking-wider">Meals</span>
+                  <span className="font-mono font-medium">{ms.totalMeals.toFixed(1)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground text-[11px] uppercase tracking-wider">Deposit</span>
+                  <span className="font-mono font-medium text-primary">{formatCurrency(ms.totalDeposit)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground text-[11px] uppercase tracking-wider">Meal Cost</span>
+                  <span className="font-mono font-medium">{formatCurrency(ms.mealCost)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground text-[11px] uppercase tracking-wider">Shared</span>
+                  <span className="font-mono font-medium">{formatCurrency(ms.sharedCost)}</span>
+                </div>
+                <div className="flex flex-col col-span-2 pt-1 border-t border-border/30 mt-1">
+                  <span className="text-muted-foreground text-[11px] uppercase tracking-wider">Total Cost</span>
+                  <span className="font-mono font-medium text-destructive">{formatCurrency(ms.totalCost)}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop View: Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
                 <th className="text-left p-3 font-semibold">Member</th>
                 <th className="text-right p-3 font-semibold">Meals</th>
                 <th className="text-right p-3 font-semibold">Deposit</th>
-                <th className="text-right p-3 font-semibold hidden sm:table-cell">Meal Cost</th>
-                <th className="text-right p-3 font-semibold hidden md:table-cell">Shared</th>
+                <th className="text-right p-3 font-semibold">Meal Cost</th>
+                <th className="text-right p-3 font-semibold">Shared</th>
                 <th className="text-right p-3 font-semibold">Total Cost</th>
                 <th className="text-right p-3 font-semibold">Balance</th>
               </tr>
@@ -771,8 +814,8 @@ export default function MessManagerApp() {
                   </td>
                   <td className="text-right p-3 font-mono">{ms.totalMeals.toFixed(1)}</td>
                   <td className="text-right p-3 font-mono">{formatCurrency(ms.totalDeposit)}</td>
-                  <td className="text-right p-3 font-mono hidden sm:table-cell">{formatCurrency(ms.mealCost)}</td>
-                  <td className="text-right p-3 font-mono hidden md:table-cell">{formatCurrency(ms.sharedCost)}</td>
+                  <td className="text-right p-3 font-mono">{formatCurrency(ms.mealCost)}</td>
+                  <td className="text-right p-3 font-mono">{formatCurrency(ms.sharedCost)}</td>
                   <td className="text-right p-3 font-mono">{formatCurrency(ms.totalCost)}</td>
                   <td className={cn('text-right p-3 font-mono font-bold', ms.balance >= 0 ? 'text-success' : 'text-destructive')}>
                     {formatCurrency(ms.balance)}
