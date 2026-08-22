@@ -92,6 +92,7 @@ function pickState(s: AppState) {
     activeMonthId: s.activeMonthId,
     theme: s.theme,
     activityLog: s.activityLog,
+    lastUpdatedAt: s.lastUpdatedAt,
   };
 }
 
@@ -622,6 +623,7 @@ export const useStore = create<Store>()(
 
       syncToCloud: async () => {
         try {
+          set({ lastUpdatedAt: Date.now() });
           const state = get();
           await fetch('/api/data', {
             method: 'POST',
@@ -630,7 +632,7 @@ export const useStore = create<Store>()(
             cache: 'no-store',
           });
         } catch {
-          // Silently fail — local state is always the source of truth locally
+          // Silently fail - local state is always the source of truth locally
         }
       },
 
@@ -648,6 +650,16 @@ export const useStore = create<Store>()(
           }
           const { ok, data } = await res.json();
           if (ok && data && Array.isArray(data.members) && Array.isArray(data.months)) {
+            const currentLastUpdated = get().lastUpdatedAt || 0;
+            const cloudLastUpdated = data.lastUpdatedAt || 0;
+            
+            if (currentLastUpdated > cloudLastUpdated) {
+              // Local state is strictly newer than the cloud (e.g. an aborted POST).
+              // Heal the cloud by forcing a push of our newer local state.
+              get().syncToCloud();
+              return; // Do NOT overwrite local state with stale cloud data
+            }
+
             // Cloud has data — merge it in, but preserve local auth session
             const { isAuthenticated, activeUserId, loginTimestamp } = get();
             set({
@@ -656,6 +668,7 @@ export const useStore = create<Store>()(
               activeMonthId: data.activeMonthId || null,
               theme: data.theme || 'dark',
               activityLog: data.activityLog || [],
+              lastUpdatedAt: data.lastUpdatedAt || Date.now(),
               // Preserve local session — don't log out just because we reloaded
               isAuthenticated,
               activeUserId,
@@ -682,6 +695,7 @@ export const useStore = create<Store>()(
         loginTimestamp: state.loginTimestamp,
         theme: state.theme,
         activityLog: state.activityLog,
+        lastUpdatedAt: state.lastUpdatedAt,
       }),
     }
   )

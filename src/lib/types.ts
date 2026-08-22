@@ -80,6 +80,7 @@ export interface AppState {
   cloudSynced: boolean; // true once initial cloud load completes
   theme: 'light' | 'dark' | 'system';
   activityLog: ActivityLogEntry[];
+  lastUpdatedAt?: number;
 }
 
 // ─── Calculation Result Types ───────────────────────────────────────────────
