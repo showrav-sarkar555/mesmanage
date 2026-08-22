@@ -573,6 +573,7 @@ export const useStore = create<Store>()(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(pickState(state)),
+            cache: 'no-store',
           });
         } catch {
           // Silently fail — local state is always the source of truth locally
@@ -581,7 +582,7 @@ export const useStore = create<Store>()(
 
       loadFromCloud: async () => {
         try {
-          const res = await fetch('/api/data');
+          const res = await fetch('/api/data', { cache: 'no-store' });
           if (!res.ok) {
             // No cloud data yet — push our current state up to initialise the DB
             const state = get();

@@ -33,12 +33,20 @@ export async function GET() {
   try {
     const data = await redis.get(DATA_KEY);
     if (!data) {
-      return Response.json({ ok: false, reason: 'no-data' }, { status: 404 });
+      return Response.json({ ok: false, reason: 'no-data' }, {
+        status: 404,
+        headers: { 'Cache-Control': 'no-store' },
+      });
     }
-    return Response.json({ ok: true, data });
+    return Response.json({ ok: true, data }, {
+      headers: { 'Cache-Control': 'no-store' },
+    });
   } catch (err) {
     console.error('[GET /api/data]', err);
-    return Response.json({ ok: false, reason: 'server-error' }, { status: 500 });
+    return Response.json({ ok: false, reason: 'server-error' }, {
+      status: 500,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 }
 
