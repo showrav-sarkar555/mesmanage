@@ -11,8 +11,9 @@ import { Redis } from '@upstash/redis';
 const DATA_KEY = 'mess-manager:app-state';
 
 function getRedis() {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  // Vercel's Upstash integration creates KV_ prefixed variables
+  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!url || !token) {
     return null; // KV not configured — fall back to local-only mode
