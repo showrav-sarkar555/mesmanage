@@ -22,6 +22,9 @@ function getRedis() {
   return new Redis({ url, token });
 }
 
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 export async function GET() {
   const redis = getRedis();
 

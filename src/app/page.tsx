@@ -432,7 +432,7 @@ export default function MessManagerApp() {
               )}
             </button>
             {notifOpen && (
-              <div className="absolute right-[-50px] sm:right-0 top-12 w-[85vw] sm:w-80 max-w-[320px] glass-card rounded-xl shadow-2xl border border-border overflow-hidden z-50">
+              <div className="fixed sm:absolute inset-x-4 top-[70px] sm:inset-auto sm:right-0 sm:top-12 w-auto sm:w-80 max-w-[400px] glass-card rounded-xl shadow-2xl border border-border overflow-hidden z-[100]">
                 <div className="p-3 border-b border-border font-semibold text-sm">Recent Activity</div>
                 <div className="max-h-64 overflow-y-auto">
                   {activityLog.slice(0, 10).map((log) => (
@@ -1695,9 +1695,15 @@ export default function MessManagerApp() {
 
   // ── MODALS ──────────────────────────────────────────────────────────────
 
+  const getDefaultDate = () => {
+    if (!activeMonth) return today;
+    if (today < activeMonth.startDate || today > activeMonth.endDate) return activeMonth.endDate;
+    return today;
+  };
+
   // Add/Edit Deposit Modal
   const AddDepositModal = () => {
-    const [date, setDate] = useState(editingDeposit ? editingDeposit.date : today);
+    const [date, setDate] = useState(editingDeposit ? editingDeposit.date : getDefaultDate());
     const [memberId, setMemberId] = useState(editingDeposit ? editingDeposit.memberId : (activeUserId || ''));
     const [amount, setAmount] = useState(editingDeposit ? editingDeposit.amount.toString() : '');
     const [note, setNote] = useState(editingDeposit ? (editingDeposit.note || '') : '');
@@ -1705,12 +1711,12 @@ export default function MessManagerApp() {
     // Reset state when modal opens/closes
     useEffect(() => {
       if (depositModalOpen) {
-        setDate(editingDeposit ? editingDeposit.date : today);
+        setDate(editingDeposit ? editingDeposit.date : getDefaultDate());
         setMemberId(editingDeposit ? editingDeposit.memberId : (activeUserId || ''));
         setAmount(editingDeposit ? editingDeposit.amount.toString() : '');
         setNote(editingDeposit ? (editingDeposit.note || '') : '');
       }
-    }, [depositModalOpen, editingDeposit, today, activeUserId]);
+    }, [depositModalOpen, editingDeposit, activeUserId]);
 
     const handleClose = () => {
       setDepositModalOpen(false);
@@ -1742,6 +1748,8 @@ export default function MessManagerApp() {
             <input
               type="date"
               value={date}
+              min={activeMonth?.startDate}
+              max={activeMonth?.endDate}
               onChange={(e) => setDate(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-muted border border-border focus:border-primary focus:outline-none transition-colors"
             />
@@ -1794,7 +1802,7 @@ export default function MessManagerApp() {
 
   // Add Meal Cost Modal
   const AddMealCostModal = () => {
-    const [date, setDate] = useState(editingMealCost ? editingMealCost.date : today);
+    const [date, setDate] = useState(editingMealCost ? editingMealCost.date : getDefaultDate());
     const [shopperId, setShopperId] = useState(editingMealCost ? editingMealCost.shopperMemberId : (activeUserId || ''));
     const [amount, setAmount] = useState(editingMealCost ? editingMealCost.amount.toString() : '');
     const [bazarList, setBazarList] = useState(editingMealCost ? (editingMealCost.bazarList || '') : '');
@@ -1802,13 +1810,13 @@ export default function MessManagerApp() {
 
     useEffect(() => {
       if (mealCostModalOpen) {
-        setDate(editingMealCost ? editingMealCost.date : today);
+        setDate(editingMealCost ? editingMealCost.date : getDefaultDate());
         setShopperId(editingMealCost ? editingMealCost.shopperMemberId : (activeUserId || ''));
         setAmount(editingMealCost ? editingMealCost.amount.toString() : '');
         setBazarList(editingMealCost ? (editingMealCost.bazarList || '') : '');
         setAutoDeposit(editingMealCost ? editingMealCost.isAutoCreditedToDeposit : true);
       }
-    }, [mealCostModalOpen, editingMealCost, today, activeUserId]);
+    }, [mealCostModalOpen, editingMealCost, activeUserId]);
 
     const handleClose = () => {
       setMealCostModalOpen(false);
@@ -1839,6 +1847,7 @@ export default function MessManagerApp() {
           <div>
             <label className="block text-sm font-medium mb-1.5">Date</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+              min={activeMonth?.startDate} max={activeMonth?.endDate}
               className="w-full px-3 py-2 rounded-lg bg-muted border border-border focus:border-primary focus:outline-none transition-colors" />
           </div>
           <div>
@@ -1888,7 +1897,7 @@ export default function MessManagerApp() {
 
   // Add Other Cost Modal
   const AddOtherCostModal = () => {
-    const [date, setDate] = useState(today);
+    const [date, setDate] = useState(getDefaultDate());
     const [title, setTitle] = useState('');
     const [costType, setCostType] = useState<'SHARED' | 'INDIVIDUAL'>('SHARED');
     const [amount, setAmount] = useState('');
@@ -1938,6 +1947,7 @@ export default function MessManagerApp() {
           <div>
             <label className="block text-sm font-medium mb-1.5">Date</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+              min={activeMonth?.startDate} max={activeMonth?.endDate}
               className="w-full px-3 py-2 rounded-lg bg-muted border border-border focus:border-primary focus:outline-none transition-colors" />
           </div>
           <div>
@@ -2201,7 +2211,7 @@ export default function MessManagerApp() {
   };
 
   const MealModal = () => {
-    const [date, setDate] = useState(today);
+    const [date, setDate] = useState(getDefaultDate());
     const [memberId, setMemberId] = useState(members[0]?.id || '');
     const [b, setB] = useState(0);
     const [l, setL] = useState(0);
