@@ -657,6 +657,7 @@ export const useStore = create<Store>()(
               // Local state is strictly newer than the cloud (e.g. an aborted POST).
               // Heal the cloud by forcing a push of our newer local state.
               get().syncToCloud();
+              set({ cloudSynced: true });
               return; // Do NOT overwrite local state with stale cloud data
             }
 
