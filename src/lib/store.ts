@@ -73,11 +73,27 @@ interface AppActions {
   // ── Helpers ─────────────────────────────────────────
   getActiveMonth: () => MonthCycle | null;
   getActiveUser: () => Member | null;
+
+  // ── Cloud Sync ──────────────────────────────────────
+  syncToCloud: () => Promise<void>;
+  loadFromCloud: () => Promise<void>;
+  cloudSynced: boolean; // true once initial cloud load succeeds
 }
 
 type Store = AppState & AppActions;
 
-const initialState: AppState = generateDemoData();
+// Helper: pick only the serialisable AppState fields for cloud sync
+function pickState(s: AppState) {
+  return {
+    members: s.members,
+    months: s.months,
+    activeMonthId: s.activeMonthId,
+    theme: s.theme,
+    activityLog: s.activityLog,
+  };
+}
+
+const initialState: AppState = { ...generateDemoData(), cloudSynced: false } as AppState;
 
 export const useStore = create<Store>()(
   persist(
@@ -91,12 +107,14 @@ export const useStore = create<Store>()(
           members: [...s.members, newMember],
         }));
         get().addLog('MEMBER', `Added member: ${newMember.name}`);
+        get().syncToCloud();
       },
 
       updateMember: (id, updates) => {
         set((s) => ({
           members: s.members.map((m) => (m.id === id ? { ...m, ...updates } : m)),
         }));
+        get().syncToCloud();
       },
 
       removeMember: (id) => {
@@ -105,6 +123,7 @@ export const useStore = create<Store>()(
           members: s.members.filter((m) => m.id !== id),
         }));
         if (member) get().addLog('MEMBER', `Removed member: ${member.name}`);
+        get().syncToCloud();
       },
 
       transferManagerRole: (newManagerId) => {
@@ -125,6 +144,7 @@ export const useStore = create<Store>()(
         
         const newManager = get().members.find(m => m.id === newManagerId);
         if (newManager) get().addLog('MEMBER', `Manager role transferred to ${newManager.name}`);
+        get().syncToCloud();
       },
 
       // ── Authentication ────────────────────────────────────
@@ -177,6 +197,7 @@ export const useStore = create<Store>()(
           activeMonthId: newMonth.id,
         }));
         get().addLog('MONTH', `Created new month: ${monthName}`);
+        get().syncToCloud();
       },
 
       setActiveMonth: (id) => set({ activeMonthId: id }),
@@ -244,6 +265,7 @@ export const useStore = create<Store>()(
           members: updatedMembers,
         });
         get().addLog('MONTH', `Closed ${activeMonth.monthName} and opened ${newMonthName} with manager ${updatedMembers.find(m => m.id === newManagerId)?.name}`);
+        get().syncToCloud();
       },
 
       // ── Meals ───────────────────────────────────────────
@@ -279,6 +301,7 @@ export const useStore = create<Store>()(
             ),
           };
         });
+        get().syncToCloud();
       },
 
       setFullMealEntry: (date, memberId, meals) => {
@@ -310,6 +333,7 @@ export const useStore = create<Store>()(
         if (member) {
           get().addLog('MEAL', `Updated meals for ${member.name} on ${date}: B:${meals.breakfast} L:${meals.lunch} D:${meals.dinner}`);
         }
+        get().syncToCloud();
       },
 
       setBatchMeals: (entries) => {
@@ -336,6 +360,7 @@ export const useStore = create<Store>()(
           };
         });
         get().addLog('MEAL', `Batch meal entries updated`);
+        get().syncToCloud();
       },
 
       // ── Deposits ────────────────────────────────────────
@@ -354,6 +379,7 @@ export const useStore = create<Store>()(
         });
         const member = get().members.find((m) => m.id === deposit.memberId);
         get().addLog('DEPOSIT', `${member?.name || 'Unknown'} deposited ৳${deposit.amount}`);
+        get().syncToCloud();
       },
 
       removeDeposit: (id) => {
@@ -364,6 +390,7 @@ export const useStore = create<Store>()(
               : m
           ),
         }));
+        get().syncToCloud();
       },
 
       // ── Meal Costs ──────────────────────────────────────
@@ -404,6 +431,7 @@ export const useStore = create<Store>()(
           'MEAL_COST',
           `${shopper?.name || 'Unknown'} spent ৳${cost.amount} on bazar${autoDeposit ? ' (auto-credited)' : ''}`
         );
+        get().syncToCloud();
       },
 
       removeMealCost: (id) => {
@@ -414,6 +442,7 @@ export const useStore = create<Store>()(
               : m
           ),
         }));
+        get().syncToCloud();
       },
 
       // ── Other Costs ─────────────────────────────────────
@@ -427,6 +456,7 @@ export const useStore = create<Store>()(
           ),
         }));
         get().addLog('OTHER_COST', `Added ${cost.costType.toLowerCase()} cost: ${cost.costTitle} (৳${cost.amount})`);
+        get().syncToCloud();
       },
 
       removeOtherCost: (id) => {
@@ -437,6 +467,7 @@ export const useStore = create<Store>()(
               : m
           ),
         }));
+        get().syncToCloud();
       },
 
       // ── Bazar Schedule ──────────────────────────────────
@@ -448,6 +479,7 @@ export const useStore = create<Store>()(
               : m
           ),
         }));
+        get().syncToCloud();
       },
 
       // ── Theme ───────────────────────────────────────────
@@ -475,6 +507,7 @@ export const useStore = create<Store>()(
               theme: data.theme || 'dark',
               activityLog: data.activityLog || [],
             });
+            get().syncToCloud();
             return true;
           }
           return false;
@@ -486,6 +519,7 @@ export const useStore = create<Store>()(
       resetToDemo: () => {
         const demoData = generateDemoData();
         set(demoData);
+        get().syncToCloud();
       },
 
       clearAll: () => {
@@ -496,9 +530,11 @@ export const useStore = create<Store>()(
           activeUserId: null,
           isAuthenticated: false,
           loginTimestamp: null,
+          cloudSynced: false,
           theme: 'system',
           activityLog: [],
         });
+        get().syncToCloud();
       },
 
       // ── Activity Log ────────────────────────────────────
@@ -525,6 +561,59 @@ export const useStore = create<Store>()(
       getActiveUser: () => {
         const s = get();
         return s.members.find((m) => m.id === s.activeUserId) || null;
+      },
+
+      // ── Cloud Sync ─────────────────────────────────────────
+      cloudSynced: false,
+
+      syncToCloud: async () => {
+        try {
+          const state = get();
+          await fetch('/api/data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pickState(state)),
+          });
+        } catch {
+          // Silently fail — local state is always the source of truth locally
+        }
+      },
+
+      loadFromCloud: async () => {
+        try {
+          const res = await fetch('/api/data');
+          if (!res.ok) {
+            // No cloud data yet — push our current state up to initialise the DB
+            const state = get();
+            if (state.members.length > 0) {
+              await get().syncToCloud();
+            }
+            set({ cloudSynced: true });
+            return;
+          }
+          const { ok, data } = await res.json();
+          if (ok && data && Array.isArray(data.members) && Array.isArray(data.months)) {
+            // Cloud has data — merge it in, but preserve local auth session
+            const { isAuthenticated, activeUserId, loginTimestamp } = get();
+            set({
+              members: data.members,
+              months: data.months,
+              activeMonthId: data.activeMonthId || null,
+              theme: data.theme || 'dark',
+              activityLog: data.activityLog || [],
+              // Preserve local session — don't log out just because we reloaded
+              isAuthenticated,
+              activeUserId,
+              loginTimestamp,
+              cloudSynced: true,
+            });
+          } else {
+            set({ cloudSynced: true });
+          }
+        } catch {
+          // Network error — fall back to local state silently
+          set({ cloudSynced: true });
+        }
       },
     }),
     {

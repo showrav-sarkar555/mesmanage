@@ -298,12 +298,15 @@ export default function MessManagerApp() {
     transferManagerRole,
     setFullMealEntry,
     checkSession,
+    loadFromCloud,
   } = store;
 
   useEffect(() => {
     setMounted(true);
     // Check if the persisted session is older than 7 days and log out if so
     checkSession();
+    // Load shared data from cloud (Upstash Redis) — syncs members, PINs, meals etc.
+    loadFromCloud();
     // Register service worker for PWA / offline support
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});

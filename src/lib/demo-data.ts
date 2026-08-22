@@ -157,6 +157,7 @@ export function generateDemoData() {
     activeUserId: null,
     isAuthenticated: false,
     loginTimestamp: null,
+    cloudSynced: false,
     theme: 'dark' as const,
     activityLog,
   };
