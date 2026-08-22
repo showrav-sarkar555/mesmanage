@@ -432,7 +432,7 @@ export default function MessManagerApp() {
               )}
             </button>
             {notifOpen && (
-              <div className="absolute right-0 top-12 w-80 glass-card rounded-xl shadow-2xl border border-border overflow-hidden z-50">
+              <div className="absolute right-[-50px] sm:right-0 top-12 w-[85vw] sm:w-80 max-w-[320px] glass-card rounded-xl shadow-2xl border border-border overflow-hidden z-50">
                 <div className="p-3 border-b border-border font-semibold text-sm">Recent Activity</div>
                 <div className="max-h-64 overflow-y-auto">
                   {activityLog.slice(0, 10).map((log) => (
@@ -932,7 +932,62 @@ export default function MessManagerApp() {
         </div>
 
         <div className="glass-card overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile View: Box Cards */}
+          <div className="grid grid-cols-1 gap-3 p-3 md:hidden">
+            {sortedDeposits.map((d) => {
+              const member = members.find((m) => m.id === d.memberId);
+              return (
+                <div key={d.id} className="bg-card border border-border/50 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                  <div className="flex items-center justify-between border-b border-border/30 pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold">
+                        {member?.name?.charAt(0) || '?'}
+                      </div>
+                      <span className="font-semibold text-base">{member?.name || 'Unknown'}</span>
+                    </div>
+                    <div className="font-bold text-lg text-success">
+                      {formatCurrency(d.amount)}
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center text-sm">
+                    <div className="text-muted-foreground text-xs">{d.date}</div>
+                    <div className="text-muted-foreground text-xs flex items-center gap-1">
+                      {d.note || '—'}
+                      {d.isAutoDeposit && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-chart-4/15 text-chart-4 text-[9px] font-bold">AUTO</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/30">
+                    <button
+                      onClick={() => {
+                        if (!isManager) { alert("Only manager can perform this action"); return; }
+                        setEditingDeposit(d);
+                        setDepositModalOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-medium"
+                    >
+                      <Icon name="Edit" size={14} /> Edit
+                    </button>
+                    <button
+                      onClick={() => isManager ? removeDeposit(d.id) : alert("Only manager can perform this action")}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-xs font-medium"
+                    >
+                      <Icon name="Trash" size={14} /> Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            {sortedDeposits.length === 0 && (
+              <p className="text-center text-muted-foreground text-sm p-4">No deposits yet</p>
+            )}
+          </div>
+
+          {/* Desktop View: Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
@@ -940,7 +995,7 @@ export default function MessManagerApp() {
                   <th className="text-left p-3 font-semibold">Member</th>
                   <th className="text-right p-3 font-semibold">Amount</th>
                   <th className="text-left p-3 font-semibold">Note</th>
-                  <th className="text-center p-3 font-semibold w-16">Action</th>
+                  <th className="text-center p-3 font-semibold w-24">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -1035,90 +1090,179 @@ export default function MessManagerApp() {
 
         {tab === 'meal' ? (
           <div className="glass-card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left p-3 font-semibold">Date</th>
-                  <th className="text-left p-3 font-semibold">Shopper</th>
-                  <th className="text-left p-3 font-semibold hidden sm:table-cell">Items</th>
-                  <th className="text-right p-3 font-semibold">Amount</th>
-                  <th className="text-center p-3 w-16">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...activeMonth.mealCosts].sort((a, b) => b.date.localeCompare(a.date)).map((c) => {
-                  const shopper = members.find((m) => m.id === c.shopperMemberId);
-                  return (
-                    <tr key={c.id} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
-                      <td className="p-3 text-xs">{c.date}</td>
-                      <td className="p-3">
-                        {shopper?.name || 'Unknown'}
+            {/* Mobile View: Box Cards */}
+            <div className="grid grid-cols-1 gap-3 p-3 md:hidden">
+              {[...activeMonth.mealCosts].sort((a, b) => b.date.localeCompare(a.date)).map((c) => {
+                const shopper = members.find((m) => m.id === c.shopperMemberId);
+                return (
+                  <div key={c.id} className="bg-card border border-border/50 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                    <div className="flex items-center justify-between border-b border-border/30 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-base">{shopper?.name || 'Unknown'}</span>
                         {c.isAutoCreditedToDeposit && (
-                          <span className="ml-1 px-1.5 py-0.5 rounded-full bg-chart-4/15 text-chart-4 text-[9px] font-bold">AUTO-DEP</span>
+                          <span className="px-1.5 py-0.5 rounded-full bg-chart-4/15 text-chart-4 text-[9px] font-bold">AUTO-DEP</span>
                         )}
-                      </td>
-                      <td className="p-3 text-xs text-muted-foreground hidden sm:table-cell truncate max-w-[200px]">{c.bazarList || '—'}</td>
-                      <td className="text-right p-3 font-mono font-bold text-destructive">{formatCurrency(c.amount)}</td>
-                      <td className="text-center p-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => {
-                              if (!isManager) { alert("Only manager can perform this action"); return; }
-                              setEditingMealCost(c);
-                              setMealCostModalOpen(true);
-                            }}
-                            className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-                          >
-                            <Icon name="Edit" size={14} />
-                          </button>
-                          <button onClick={() => isManager ? removeMealCost(c.id) : alert("Only manager can perform this action")} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-                            <Icon name="Trash" size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </div>
+                      <div className="font-bold text-lg text-destructive">
+                        {formatCurrency(c.amount)}
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center text-sm">
+                      <div className="text-muted-foreground text-xs">{c.date}</div>
+                      <div className="text-muted-foreground text-xs flex-1 text-right ml-4 truncate">
+                        {c.bazarList || '—'}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/30">
+                      <button
+                        onClick={() => {
+                          if (!isManager) { alert("Only manager can perform this action"); return; }
+                          setEditingMealCost(c);
+                          setMealCostModalOpen(true);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-medium"
+                      >
+                        <Icon name="Edit" size={14} /> Edit
+                      </button>
+                      <button onClick={() => isManager ? removeMealCost(c.id) : alert("Only manager can perform this action")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-xs font-medium">
+                        <Icon name="Trash" size={14} /> Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {activeMonth.mealCosts.length === 0 && (
+                <p className="text-center text-muted-foreground text-sm p-4">No meal costs yet</p>
+              )}
+            </div>
+
+            {/* Desktop View: Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left p-3 font-semibold">Date</th>
+                    <th className="text-left p-3 font-semibold">Shopper</th>
+                    <th className="text-left p-3 font-semibold hidden sm:table-cell">Items</th>
+                    <th className="text-right p-3 font-semibold">Amount</th>
+                    <th className="text-center p-3 w-24">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...activeMonth.mealCosts].sort((a, b) => b.date.localeCompare(a.date)).map((c) => {
+                    const shopper = members.find((m) => m.id === c.shopperMemberId);
+                    return (
+                      <tr key={c.id} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
+                        <td className="p-3 text-xs">{c.date}</td>
+                        <td className="p-3">
+                          {shopper?.name || 'Unknown'}
+                          {c.isAutoCreditedToDeposit && (
+                            <span className="ml-1 px-1.5 py-0.5 rounded-full bg-chart-4/15 text-chart-4 text-[9px] font-bold">AUTO-DEP</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-xs text-muted-foreground hidden sm:table-cell truncate max-w-[200px]">{c.bazarList || '—'}</td>
+                        <td className="text-right p-3 font-mono font-bold text-destructive">{formatCurrency(c.amount)}</td>
+                        <td className="text-center p-3">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => {
+                                if (!isManager) { alert("Only manager can perform this action"); return; }
+                                setEditingMealCost(c);
+                                setMealCostModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                            >
+                              <Icon name="Edit" size={14} />
+                            </button>
+                            <button onClick={() => isManager ? removeMealCost(c.id) : alert("Only manager can perform this action")} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                              <Icon name="Trash" size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           <div className="glass-card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left p-3 font-semibold">Title</th>
-                  <th className="text-left p-3 font-semibold">Type</th>
-                  <th className="text-left p-3 font-semibold hidden sm:table-cell">Members</th>
-                  <th className="text-right p-3 font-semibold">Amount</th>
-                  <th className="text-center p-3 w-16">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {activeMonth.otherCosts.map((c) => (
-                  <tr key={c.id} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
-                    <td className="p-3 font-medium">{c.costTitle}</td>
-                    <td className="p-3">
+            {/* Mobile View: Box Cards */}
+            <div className="grid grid-cols-1 gap-3 p-3 md:hidden">
+              {activeMonth.otherCosts.map((c) => (
+                <div key={c.id} className="bg-card border border-border/50 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+                  <div className="flex items-center justify-between border-b border-border/30 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-base">{c.costTitle}</span>
                       <span className={cn(
-                        'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase',
+                        'px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase',
                         c.costType === 'SHARED' ? 'bg-primary/15 text-primary' : 'bg-chart-4/15 text-chart-4'
                       )}>
                         {c.costType}
                       </span>
-                    </td>
-                    <td className="p-3 text-xs text-muted-foreground hidden sm:table-cell">
-                      {c.targetMemberIds.map((id) => members.find((m) => m.id === id)?.name?.split(' ')[0]).join(', ')}
-                    </td>
-                    <td className="text-right p-3 font-mono font-bold">{formatCurrency(c.amount)}</td>
-                    <td className="text-center p-3">
-                        <button onClick={() => isManager ? removeOtherCost(c.id) : alert("Only manager can perform this action")} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-                          <Icon name="Trash" size={14} />
-                        </button>
-                    </td>
+                    </div>
+                    <div className="font-bold text-lg text-foreground">
+                      {formatCurrency(c.amount)}
+                    </div>
+                  </div>
+                  
+                  <div className="text-sm text-muted-foreground text-xs flex-1 truncate">
+                    Members: {c.targetMemberIds.map((id) => members.find((m) => m.id === id)?.name?.split(' ')[0]).join(', ')}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/30">
+                    <button onClick={() => isManager ? removeOtherCost(c.id) : alert("Only manager can perform this action")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-xs font-medium">
+                      <Icon name="Trash" size={14} /> Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {activeMonth.otherCosts.length === 0 && (
+                <p className="text-center text-muted-foreground text-sm p-4">No other costs yet</p>
+              )}
+            </div>
+
+            {/* Desktop View: Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left p-3 font-semibold">Title</th>
+                    <th className="text-left p-3 font-semibold">Type</th>
+                    <th className="text-left p-3 font-semibold hidden sm:table-cell">Members</th>
+                    <th className="text-right p-3 font-semibold">Amount</th>
+                    <th className="text-center p-3 w-16">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {activeMonth.otherCosts.map((c) => (
+                    <tr key={c.id} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
+                      <td className="p-3 font-medium">{c.costTitle}</td>
+                      <td className="p-3">
+                        <span className={cn(
+                          'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase',
+                          c.costType === 'SHARED' ? 'bg-primary/15 text-primary' : 'bg-chart-4/15 text-chart-4'
+                        )}>
+                          {c.costType}
+                        </span>
+                      </td>
+                      <td className="p-3 text-xs text-muted-foreground hidden sm:table-cell">
+                        {c.targetMemberIds.map((id) => members.find((m) => m.id === id)?.name?.split(' ')[0]).join(', ')}
+                      </td>
+                      <td className="text-right p-3 font-mono font-bold">{formatCurrency(c.amount)}</td>
+                      <td className="text-center p-3">
+                          <button onClick={() => isManager ? removeOtherCost(c.id) : alert("Only manager can perform this action")} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                            <Icon name="Trash" size={14} />
+                          </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
