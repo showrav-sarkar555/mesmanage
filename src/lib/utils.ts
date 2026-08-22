@@ -23,7 +23,10 @@ export function formatDate(dateStr: string): string {
 
 export function getTodayStr(): string {
   const d = new Date();
-  return d.toISOString().split('T')[0];
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function generateId(): string {
@@ -35,7 +38,10 @@ export function getDaysInRange(start: string, end: string): string[] {
   const current = new Date(start + 'T00:00:00');
   const endDate = new Date(end + 'T00:00:00');
   while (current <= endDate) {
-    days.push(current.toISOString().split('T')[0]);
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, '0');
+    const day = String(current.getDate()).padStart(2, '0');
+    days.push(`${year}-${month}-${day}`);
     current.setDate(current.getDate() + 1);
   }
   return days;

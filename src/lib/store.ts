@@ -44,10 +44,12 @@ interface AppActions {
 
   // ── Deposits ────────────────────────────────────────
   addDeposit: (deposit: Omit<DepositEntry, 'id'>) => void;
+  updateDeposit: (id: string, deposit: Omit<DepositEntry, 'id'>) => void;
   removeDeposit: (id: string) => void;
 
   // ── Meal Costs ──────────────────────────────────────
   addMealCost: (cost: Omit<MealCostEntry, 'id'>, autoDeposit: boolean) => void;
+  updateMealCost: (id: string, cost: Omit<MealCostEntry, 'id'>, autoDeposit: boolean) => void;
   removeMealCost: (id: string) => void;
 
   // ── Other Costs ─────────────────────────────────────
@@ -301,6 +303,11 @@ export const useStore = create<Store>()(
             ),
           };
         });
+        
+        const member = get().members.find(m => m.id === memberId);
+        if (member) {
+          get().addLog('MEAL', `Updated ${mealType} meal for ${member.name} on ${date} to ${value}`);
+        }
         get().syncToCloud();
       },
 
@@ -379,6 +386,25 @@ export const useStore = create<Store>()(
         });
         const member = get().members.find((m) => m.id === deposit.memberId);
         get().addLog('DEPOSIT', `${member?.name || 'Unknown'} deposited ৳${deposit.amount}`);
+      },
+
+      updateDeposit: (id, deposit) => {
+        set((s) => {
+          const month = s.months.find((m) => m.id === s.activeMonthId);
+          if (!month) return s;
+          return {
+            months: s.months.map((m) =>
+              m.id === s.activeMonthId
+                ? {
+                    ...m,
+                    deposits: m.deposits.map((d) => (d.id === id ? { ...deposit, id } : d)),
+                  }
+                : m
+            ),
+          };
+        });
+        const member = get().members.find((m) => m.id === deposit.memberId);
+        get().addLog('DEPOSIT', `Updated deposit for ${member?.name || 'Unknown'} to ৳${deposit.amount}`);
         get().syncToCloud();
       },
 
@@ -430,6 +456,34 @@ export const useStore = create<Store>()(
         get().addLog(
           'MEAL_COST',
           `${shopper?.name || 'Unknown'} spent ৳${cost.amount} on bazar${autoDeposit ? ' (auto-credited)' : ''}`
+        );
+        get().syncToCloud();
+      },
+
+      updateMealCost: (id, cost, autoDeposit) => {
+        set((s) => {
+          const month = s.months.find((m) => m.id === s.activeMonthId);
+          if (!month) return s;
+          const existingCost = month.mealCosts.find(c => c.id === id);
+          if (!existingCost) return s;
+
+          return {
+            months: s.months.map((m) =>
+              m.id === s.activeMonthId
+                ? {
+                    ...m,
+                    mealCosts: m.mealCosts.map((c) =>
+                      c.id === id ? { ...cost, id, isAutoCreditedToDeposit: existingCost.isAutoCreditedToDeposit } : c
+                    ),
+                  }
+                : m
+            ),
+          };
+        });
+        const shopper = get().members.find((m) => m.id === cost.shopperMemberId);
+        get().addLog(
+          'MEAL_COST',
+          `Updated bazar cost for ${shopper?.name || 'Unknown'} on ${cost.date} to ৳${cost.amount}`
         );
         get().syncToCloud();
       },

@@ -111,28 +111,28 @@ function MealStepper({
         <span className="text-sm font-medium">{label}</span>
       </div>
       <div className="text-3xl font-bold gradient-text">{value.toFixed(2)}</div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-center gap-1.5 w-full">
         <button
           onClick={() => step(-1)}
-          className="w-8 h-8 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30 flex items-center justify-center transition-colors text-xs font-bold"
+          className="flex-1 max-w-[36px] h-9 rounded-lg bg-destructive/20 text-destructive hover:bg-destructive/30 flex items-center justify-center transition-colors text-xs font-bold"
         >
           -1
         </button>
         <button
           onClick={() => step(-0.25)}
-          className="w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
+          className="flex-1 max-w-[36px] h-9 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
         >
           <Icon name="Minus" size={14} />
         </button>
         <button
           onClick={() => step(0.25)}
-          className="w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
+          className="flex-1 max-w-[36px] h-9 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
         >
           <Icon name="Plus" size={14} />
         </button>
         <button
           onClick={() => step(1)}
-          className="w-8 h-8 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors text-xs font-bold"
+          className="flex-1 max-w-[36px] h-9 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors text-xs font-bold"
         >
           +1
         </button>
@@ -277,7 +277,9 @@ export default function MessManagerApp() {
   // Modal states
   const [mealModalOpen, setMealModalOpen] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [editingDeposit, setEditingDeposit] = useState<any>(null);
   const [mealCostModalOpen, setMealCostModalOpen] = useState(false);
+  const [editingMealCost, setEditingMealCost] = useState<any>(null);
   const [otherCostModalOpen, setOtherCostModalOpen] = useState(false);
   const [memberModalOpen, setMemberModalOpen] = useState(false);
   const [monthModalOpen, setMonthModalOpen] = useState(false);
@@ -963,12 +965,24 @@ export default function MessManagerApp() {
                         )}
                       </td>
                       <td className="text-center p-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => {
+                              if (!isManager) { alert("Only manager can perform this action"); return; }
+                              setEditingDeposit(d);
+                              setDepositModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            <Icon name="Edit" size={14} />
+                          </button>
                           <button
                             onClick={() => isManager ? removeDeposit(d.id) : alert("Only manager can perform this action")}
                             className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                           >
                             <Icon name="Trash" size={14} />
                           </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1046,9 +1060,21 @@ export default function MessManagerApp() {
                       <td className="p-3 text-xs text-muted-foreground hidden sm:table-cell truncate max-w-[200px]">{c.bazarList || '—'}</td>
                       <td className="text-right p-3 font-mono font-bold text-destructive">{formatCurrency(c.amount)}</td>
                       <td className="text-center p-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => {
+                              if (!isManager) { alert("Only manager can perform this action"); return; }
+                              setEditingMealCost(c);
+                              setMealCostModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            <Icon name="Edit" size={14} />
+                          </button>
                           <button onClick={() => isManager ? removeMealCost(c.id) : alert("Only manager can perform this action")} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
                             <Icon name="Trash" size={14} />
                           </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1525,26 +1551,47 @@ export default function MessManagerApp() {
 
   // ── MODALS ──────────────────────────────────────────────────────────────
 
-  // Add Deposit Modal
+  // Add/Edit Deposit Modal
   const AddDepositModal = () => {
-    const [date, setDate] = useState(today);
-    const [memberId, setMemberId] = useState(activeUserId || '');
-    const [amount, setAmount] = useState('');
-    const [note, setNote] = useState('');
+    const [date, setDate] = useState(editingDeposit ? editingDeposit.date : today);
+    const [memberId, setMemberId] = useState(editingDeposit ? editingDeposit.memberId : (activeUserId || ''));
+    const [amount, setAmount] = useState(editingDeposit ? editingDeposit.amount.toString() : '');
+    const [note, setNote] = useState(editingDeposit ? (editingDeposit.note || '') : '');
+
+    // Reset state when modal opens/closes
+    useEffect(() => {
+      if (depositModalOpen) {
+        setDate(editingDeposit ? editingDeposit.date : today);
+        setMemberId(editingDeposit ? editingDeposit.memberId : (activeUserId || ''));
+        setAmount(editingDeposit ? editingDeposit.amount.toString() : '');
+        setNote(editingDeposit ? (editingDeposit.note || '') : '');
+      }
+    }, [depositModalOpen, editingDeposit, today, activeUserId]);
+
+    const handleClose = () => {
+      setDepositModalOpen(false);
+      setEditingDeposit(null);
+    };
 
     const handleSubmit = () => {
       if (!memberId || !amount || parseFloat(amount) <= 0) return;
-      addDeposit({
+      const depositData = {
         date,
         memberId,
         amount: parseFloat(amount),
         note: note || undefined,
-      });
-      setDepositModalOpen(false);
+      };
+      
+      if (editingDeposit) {
+        store.updateDeposit(editingDeposit.id, depositData);
+      } else {
+        store.addDeposit(depositData);
+      }
+      handleClose();
     };
 
     return (
-      <Modal open={depositModalOpen} onClose={() => setDepositModalOpen(false)} title="Add Deposit">
+      <Modal open={depositModalOpen} onClose={handleClose} title={editingDeposit ? "Edit Deposit" : "Add Deposit"}>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1.5">Date</label>
@@ -1594,7 +1641,7 @@ export default function MessManagerApp() {
             onClick={handleSubmit}
             className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
           >
-            Add Deposit
+            {editingDeposit ? "Save Changes" : "Add Deposit"}
           </button>
         </div>
       </Modal>
@@ -1603,29 +1650,47 @@ export default function MessManagerApp() {
 
   // Add Meal Cost Modal
   const AddMealCostModal = () => {
-    const [date, setDate] = useState(today);
-    const [shopperId, setShopperId] = useState(activeUserId || '');
-    const [amount, setAmount] = useState('');
-    const [bazarList, setBazarList] = useState('');
-    const [autoDeposit, setAutoDeposit] = useState(true);
+    const [date, setDate] = useState(editingMealCost ? editingMealCost.date : today);
+    const [shopperId, setShopperId] = useState(editingMealCost ? editingMealCost.shopperMemberId : (activeUserId || ''));
+    const [amount, setAmount] = useState(editingMealCost ? editingMealCost.amount.toString() : '');
+    const [bazarList, setBazarList] = useState(editingMealCost ? (editingMealCost.bazarList || '') : '');
+    const [autoDeposit, setAutoDeposit] = useState(editingMealCost ? editingMealCost.isAutoCreditedToDeposit : true);
+
+    useEffect(() => {
+      if (mealCostModalOpen) {
+        setDate(editingMealCost ? editingMealCost.date : today);
+        setShopperId(editingMealCost ? editingMealCost.shopperMemberId : (activeUserId || ''));
+        setAmount(editingMealCost ? editingMealCost.amount.toString() : '');
+        setBazarList(editingMealCost ? (editingMealCost.bazarList || '') : '');
+        setAutoDeposit(editingMealCost ? editingMealCost.isAutoCreditedToDeposit : true);
+      }
+    }, [mealCostModalOpen, editingMealCost, today, activeUserId]);
+
+    const handleClose = () => {
+      setMealCostModalOpen(false);
+      setEditingMealCost(null);
+    };
 
     const handleSubmit = () => {
       if (!shopperId || !amount || parseFloat(amount) <= 0) return;
-      addMealCost(
-        {
-          date,
-          shopperMemberId: shopperId,
-          amount: parseFloat(amount),
-          bazarList: bazarList || undefined,
-          isAutoCreditedToDeposit: autoDeposit,
-        },
-        autoDeposit
-      );
-      setMealCostModalOpen(false);
+      const costData = {
+        date,
+        shopperMemberId: shopperId,
+        amount: parseFloat(amount),
+        bazarList: bazarList || undefined,
+        isAutoCreditedToDeposit: autoDeposit,
+      };
+
+      if (editingMealCost) {
+        store.updateMealCost(editingMealCost.id, costData, autoDeposit);
+      } else {
+        store.addMealCost(costData, autoDeposit);
+      }
+      handleClose();
     };
 
     return (
-      <Modal open={mealCostModalOpen} onClose={() => setMealCostModalOpen(false)} title="Add Meal / Bazar Cost">
+      <Modal open={mealCostModalOpen} onClose={handleClose} title={editingMealCost ? "Edit Meal / Bazar Cost" : "Add Meal / Bazar Cost"}>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1.5">Date</label>
@@ -1670,7 +1735,7 @@ export default function MessManagerApp() {
           </label>
           <button onClick={handleSubmit}
             className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors">
-            Add Meal Cost
+            {editingMealCost ? "Save Changes" : "Add Meal Cost"}
           </button>
         </div>
       </Modal>
