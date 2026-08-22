@@ -183,6 +183,7 @@ function LoginScreen({ store }: { store: any }) {
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const synced: boolean = store.cloudSynced;
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,13 +209,27 @@ function LoginScreen({ store }: { store: any }) {
           <p className="text-sm text-muted-foreground">Select your account to continue</p>
         </div>
 
+        {/* Cloud sync status badge */}
+        {!synced ? (
+          <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-primary/10 text-primary text-sm font-medium">
+            <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <span>Syncing latest data…</span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-2 py-1 px-3 rounded-xl bg-success/10 text-success text-xs font-medium">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Data synced from cloud ✔️</span>
+          </div>
+        )}
+
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Select Member</label>
             <select
               value={selectedUser}
               onChange={(e) => setSelectedUser(e.target.value)}
-              className="w-full p-3 rounded-xl bg-card border border-border outline-none focus:border-primary transition-colors appearance-none"
+              disabled={!synced}
+              className="w-full p-3 rounded-xl bg-card border border-border outline-none focus:border-primary transition-colors appearance-none disabled:opacity-50"
             >
               <option value="">-- Select Member --</option>
               {store.members.map((m: any) => (
@@ -229,11 +244,12 @@ function LoginScreen({ store }: { store: any }) {
             <label className="text-sm font-medium">PIN</label>
             <input
               type="password"
-              placeholder="Enter 4-digit PIN (1234)"
+              placeholder="Enter your PIN"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
-              className="w-full p-3 rounded-xl bg-card border border-border outline-none focus:border-primary transition-colors"
-              maxLength={4}
+              disabled={!synced}
+              className="w-full p-3 rounded-xl bg-card border border-border outline-none focus:border-primary transition-colors disabled:opacity-50"
+              maxLength={6}
             />
           </div>
 
@@ -241,9 +257,10 @@ function LoginScreen({ store }: { store: any }) {
 
           <button
             type="submit"
-            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all active:scale-[0.98]"
+            disabled={!synced}
+            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Login
+            {synced ? 'Login' : 'Syncing…'}
           </button>
         </form>
       </div>
