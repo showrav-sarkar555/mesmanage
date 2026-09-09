@@ -1,7 +1,7 @@
 // Mess Manager — Service Worker
 // Caches the app shell for offline use and enables PWA installation
 
-const CACHE_NAME = 'mess-manager-v1';
+const CACHE_NAME = 'mess-manager-v2';
 
 // Core files to pre-cache (the app shell)
 const PRECACHE_URLS = [
@@ -39,10 +39,11 @@ self.addEventListener('activate', (event) => {
 
 // ── Fetch: network-first with cache fallback ────────────────────────────────
 self.addEventListener('fetch', (event) => {
-  // Only handle same-origin GET requests
+  // Only handle same-origin GET requests, and completely ignore API routes!
   if (
     event.request.method !== 'GET' ||
-    !event.request.url.startsWith(self.location.origin)
+    !event.request.url.startsWith(self.location.origin) ||
+    event.request.url.includes('/api/')
   ) {
     return;
   }
