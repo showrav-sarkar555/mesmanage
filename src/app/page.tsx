@@ -1891,7 +1891,7 @@ export default function MessManagerApp() {
     };
 
     const handleSubmit = () => {
-      if (!memberId || !amount || parseFloat(amount) <= 0) return;
+      if (!memberId || !amount || isNaN(parseFloat(amount))) return;
       const depositData = {
         date,
         memberId,
@@ -1941,7 +1941,6 @@ export default function MessManagerApp() {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              min="0"
               step="0.01"
               className="w-full px-3 py-2 rounded-lg bg-muted border border-border focus:border-primary focus:outline-none transition-colors"
             />
