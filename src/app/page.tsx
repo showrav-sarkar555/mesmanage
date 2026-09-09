@@ -276,6 +276,8 @@ export default function MessManagerApp() {
 
   // Modal states
   const [mealModalOpen, setMealModalOpen] = useState(false);
+  const [mealEditDate, setMealEditDate] = useState<string | null>(null); // pre-select date for editing
+  const [mealEditMember, setMealEditMember] = useState<string | null>(null); // pre-select member for editing
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [editingDeposit, setEditingDeposit] = useState<any>(null);
   const [mealCostModalOpen, setMealCostModalOpen] = useState(false);
@@ -322,6 +324,9 @@ export default function MessManagerApp() {
     loadFromCloud,
   } = store;
 
+  // Track whether any modal is open so we can skip cloud polling during edits
+  const anyModalOpen = mealModalOpen || depositModalOpen || mealCostModalOpen || otherCostModalOpen || memberModalOpen || monthModalOpen || closeMonthModalOpen || bazarAssignModalOpen;
+
   useEffect(() => {
     setMounted(true);
     // Check if the persisted session is older than 7 days and log out if so
@@ -332,14 +337,16 @@ export default function MessManagerApp() {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
+  }, []);
 
-    // ── Periodic cloud sync ────────────────────────────────
-    // Poll every 30 seconds so all devices stay in sync
+  // ── Periodic cloud sync (pauses when modals are open) ──────────
+  useEffect(() => {
+    if (anyModalOpen) return; // Don't poll while user is editing
+
     const syncInterval = setInterval(() => {
       loadFromCloud();
     }, 30_000);
 
-    // Also re-sync when the user returns to the tab / app
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         loadFromCloud();
@@ -351,7 +358,7 @@ export default function MessManagerApp() {
       clearInterval(syncInterval);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, []);
+  }, [anyModalOpen]);
 
   // Apply theme
   useEffect(() => {
@@ -859,6 +866,13 @@ export default function MessManagerApp() {
     const dates = getDaysInRange(activeMonth.startDate, activeMonth.endDate);
     const recentDates = dates.filter((d) => d <= today).slice(-7).reverse();
 
+    const openMealEdit = (date: string, memberId?: string) => {
+      if (!isManager) { alert("Only manager can perform this action"); return; }
+      setMealEditDate(date);
+      setMealEditMember(memberId || null);
+      setMealModalOpen(true);
+    };
+
     return (
       <div className="space-y-6 animate-in">
         {/* Batch Meal Grid */}
@@ -883,28 +897,52 @@ export default function MessManagerApp() {
                       {m.name.split(' ')[0]}
                     </th>
                   ))}
+                  <th className="text-center p-3 font-semibold text-xs bg-muted/50">Total</th>
                 </tr>
               </thead>
               <tbody>
-                {recentDates.map((date) => (
-                  <tr key={date} className={cn('border-b border-border/30', date === today && 'bg-primary/5')}>
-                    <td className="p-3 text-xs font-medium whitespace-nowrap">
-                      {new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-                      {date === today && (
-                        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-primary/20 text-primary text-[9px] font-bold">
-                          TODAY
-                        </span>
-                      )}
-                    </td>
-                    {members.map((m) => {
-                      const entry = activeMonth.meals.find(
-                        (e) => e.date === date && e.memberId === m.id
-                      );
-                      const total = entry
-                        ? entry.breakfast + entry.lunch + entry.dinner
-                        : 0;
-                      return (
-                        <td key={m.id} className="text-center p-3">
+                {recentDates.map((date) => {
+                  // Calculate daily total across all members
+                  let dayTotal = 0;
+                  const memberCells = members.map((m) => {
+                    const entry = activeMonth.meals.find(
+                      (e) => e.date === date && e.memberId === m.id
+                    );
+                    const total = entry
+                      ? entry.breakfast + entry.lunch + entry.dinner
+                      : 0;
+                    dayTotal += total;
+                    return { member: m, entry, total };
+                  });
+
+                  return (
+                    <tr key={date} className={cn('border-b border-border/30', date === today && 'bg-primary/5')}>
+                      <td className="p-3 text-xs font-medium whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          {new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                          {date === today && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-primary/20 text-primary text-[9px] font-bold">
+                              TODAY
+                            </span>
+                          )}
+                          {isManager && (
+                            <button
+                              onClick={() => openMealEdit(date)}
+                              className="ml-1 p-0.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                              title={`Edit all meals for this day`}
+                            >
+                              <Icon name="Pencil" size={10} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      {memberCells.map(({ member: m, entry, total }) => (
+                        <td
+                          key={m.id}
+                          className={cn("text-center p-3", isManager && "cursor-pointer hover:bg-primary/5 transition-colors")}
+                          onClick={() => openMealEdit(date, m.id)}
+                          title={isManager ? `Click to edit ${m.name}'s meal` : undefined}
+                        >
                           <span className={cn(
                             'inline-block min-w-[32px] px-2 py-0.5 rounded-full text-xs font-bold',
                             total > 0 ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
@@ -917,10 +955,18 @@ export default function MessManagerApp() {
                             </div>
                           )}
                         </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                      ))}
+                      <td className="text-center p-3 bg-muted/20">
+                        <span className={cn(
+                          'inline-block min-w-[40px] px-2 py-0.5 rounded-full text-xs font-bold',
+                          dayTotal > 0 ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+                        )}>
+                          {dayTotal > 0 ? dayTotal.toFixed(1) : '0'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -2280,29 +2326,82 @@ export default function MessManagerApp() {
   };
 
   const MealModal = () => {
-    const [date, setDate] = useState(getDefaultDate());
-    const [memberId, setMemberId] = useState(members[0]?.id || '');
-    const [b, setB] = useState(0);
-    const [l, setL] = useState(0);
-    const [d, setD] = useState(0);
+    const initialDate = mealEditDate || getDefaultDate();
+    const initialMembers = mealEditMember
+      ? [mealEditMember]
+      : mealEditDate
+        ? members.map(m => m.id) // pencil icon = all members for that day
+        : [members[0]?.id].filter(Boolean);
 
+    const [date, setDate] = useState(initialDate);
+    const [selectedMembers, setSelectedMembers] = useState<string[]>(initialMembers);
+    const [mealValues, setMealValues] = useState<Record<string, { b: number; l: number; d: number }>>({});
+
+    // Re-initialize when modal opens with new pre-selections
+    useEffect(() => {
+      setDate(mealEditDate || getDefaultDate());
+      if (mealEditMember) {
+        setSelectedMembers([mealEditMember]);
+      } else if (mealEditDate) {
+        setSelectedMembers(members.map(m => m.id));
+      }
+    }, [mealEditDate, mealEditMember]);
+
+    const handleClose = () => {
+      setMealModalOpen(false);
+      setMealEditDate(null);
+      setMealEditMember(null);
+    };
+
+    // Load existing meal values when date or selections change
     useEffect(() => {
       if (!activeMonth) return;
-      const entry = activeMonth.meals.find(e => e.date === date && e.memberId === memberId);
-      setB(entry?.breakfast ?? 0);
-      setL(entry?.lunch ?? 0);
-      setD(entry?.dinner ?? 0);
-    }, [date, memberId, activeMonth]);
+      const vals: Record<string, { b: number; l: number; d: number }> = {};
+      for (const mid of selectedMembers) {
+        const entry = activeMonth.meals.find(e => e.date === date && e.memberId === mid);
+        vals[mid] = {
+          b: entry?.breakfast ?? 0,
+          l: entry?.lunch ?? 0,
+          d: entry?.dinner ?? 0,
+        };
+      }
+      setMealValues(vals);
+    }, [date, selectedMembers, activeMonth]);
+
+    const toggleMember = (id: string) => {
+      setSelectedMembers(prev =>
+        prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+      );
+    };
+
+    const selectAll = () => {
+      if (selectedMembers.length === members.length) {
+        setSelectedMembers([]);
+      } else {
+        setSelectedMembers(members.map(m => m.id));
+      }
+    };
+
+    const updateMemberMeal = (memberId: string, field: 'b' | 'l' | 'd', value: number) => {
+      setMealValues(prev => ({
+        ...prev,
+        [memberId]: { ...(prev[memberId] || { b: 0, l: 0, d: 0 }), [field]: value },
+      }));
+    };
 
     const handleSave = () => {
-      if (!date || !memberId) return;
-      setFullMealEntry(date, memberId, { breakfast: b, lunch: l, dinner: d });
-      setMealModalOpen(false);
+      if (!date || selectedMembers.length === 0) return;
+      for (const mid of selectedMembers) {
+        const v = mealValues[mid] || { b: 0, l: 0, d: 0 };
+        setFullMealEntry(date, mid, { breakfast: v.b, lunch: v.l, dinner: v.d });
+      }
+      handleClose();
     };
 
     return (
-      <Modal open={mealModalOpen} onClose={() => setMealModalOpen(false)} title="Add / Edit Meal">
+      <Modal open={mealModalOpen} onClose={handleClose} title="Add / Edit Meals">
         <div className="space-y-4">
+          {/* Date picker */}
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
             <input
@@ -2314,26 +2413,59 @@ export default function MessManagerApp() {
               min={activeMonth?.startDate}
             />
           </div>
+
+          {/* Member selection with checkboxes */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Member</label>
-            <select
-              value={memberId}
-              onChange={(e) => setMemberId(e.target.value)}
-              className="w-full p-2.5 rounded-xl bg-muted/50 border border-border text-sm"
-            >
-              {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-medium text-muted-foreground">Members</label>
+              <button onClick={selectAll} className="text-xs text-primary hover:underline">
+                {selectedMembers.length === members.length ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+              {members.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => toggleMember(m.id)}
+                  className={cn(
+                    'px-3 py-2 rounded-lg text-xs font-medium transition-all border',
+                    selectedMembers.includes(m.id)
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                  )}
+                >
+                  {m.name}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <MealStepper label="Breakfast" value={b} onChange={setB} icon="Coffee" />
-            <MealStepper label="Lunch" value={l} onChange={setL} icon="UtensilsCrossed" />
-            <MealStepper label="Dinner" value={d} onChange={setD} icon="Moon" />
-          </div>
+
+          {/* Meal values per selected member */}
+          {selectedMembers.length > 0 && (
+            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+              {selectedMembers.map(mid => {
+                const m = members.find(x => x.id === mid);
+                const v = mealValues[mid] || { b: 0, l: 0, d: 0 };
+                return (
+                  <div key={mid} className="glass-card p-3">
+                    <p className="text-xs font-semibold mb-2 text-primary">{m?.name}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <MealStepper label="Breakfast" value={v.b} onChange={(val) => updateMemberMeal(mid, 'b', val)} icon="Coffee" />
+                      <MealStepper label="Lunch" value={v.l} onChange={(val) => updateMemberMeal(mid, 'l', val)} icon="UtensilsCrossed" />
+                      <MealStepper label="Dinner" value={v.d} onChange={(val) => updateMemberMeal(mid, 'd', val)} icon="Moon" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <button
             onClick={handleSave}
-            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+            disabled={selectedMembers.length === 0}
+            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Save Meal
+            Save Meals ({selectedMembers.length} member{selectedMembers.length !== 1 ? 's' : ''})
           </button>
         </div>
       </Modal>
