@@ -33,7 +33,7 @@ interface AppActions {
   transferManagerRole: (newManagerId: string) => void;
 
   // ── Months ──────────────────────────────────────────
-  createMonth: (monthName: string, startDate: string, endDate: string, managerId: string) => void;
+  createMonth: (monthName: string, startDate: string, endDate: string, managerId: string, rolloverDeposits?: DepositEntry[]) => void;
   setActiveMonth: (id: string) => void;
   closeMonth: (nextManagerId: string, closingDateStr?: string) => void;
   deleteMonth: (monthId: string) => void;
@@ -94,7 +94,6 @@ function pickState(s: AppState) {
     months: s.months,
     activeMonthId: s.activeMonthId,
     messName: s.messName,
-    theme: s.theme,
     activityLog: s.activityLog,
     lastUpdatedAt: s.lastUpdatedAt,
   };
@@ -201,7 +200,7 @@ export const useStore = create<Store>()(
       setActiveUser: (id) => set({ activeUserId: id }), // Kept for legacy/demo purposes if needed, though login() is preferred
 
       // ── Months ──────────────────────────────────────────
-      createMonth: (monthName, startDate, endDate, managerId) => {
+      createMonth: (monthName, startDate, endDate, managerId, rolloverDeposits) => {
         const newMonth: MonthCycle = {
           id: generateId(),
           monthName,
@@ -210,7 +209,7 @@ export const useStore = create<Store>()(
           status: 'ACTIVE',
           managerId,
           meals: [],
-          deposits: [],
+          deposits: rolloverDeposits || [],
           mealCosts: [],
           otherCosts: [],
           bazarSchedule: {},
@@ -625,7 +624,6 @@ export const useStore = create<Store>()(
               activeMonthId: data.activeMonthId || null,
               activeUserId: data.activeUserId || null,
               messName: data.messName || 'Castle Black',
-              theme: data.theme || 'dark',
               activityLog: data.activityLog || [],
               lastUpdatedAt: Date.now(),
             });
@@ -734,7 +732,6 @@ export const useStore = create<Store>()(
               months: data.months,
               activeMonthId: data.activeMonthId || null,
               messName: data.messName || 'Castle Black',
-              theme: data.theme || 'dark',
               activityLog: data.activityLog || [],
               lastUpdatedAt: data.lastUpdatedAt || Date.now(),
               // Preserve local session — don't log out on sync

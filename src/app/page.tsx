@@ -13,6 +13,7 @@ import type {
   MonthSummary,
   DailyMealEntry,
   MonthCycle,
+  DepositEntry,
 } from '@/lib/types';
 
 // ─── Icons (inline SVG to avoid hydration issues with lucide-react) ─────────
@@ -88,6 +89,63 @@ function Modal({
   );
 }
 
+// ─── Confirm Dialog Component ─────────────────────────────────────────────
+function ConfirmDialog({
+  open,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmWord,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmWord: string;
+}) {
+  const [input, setInput] = useState('');
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl animate-scale-in overflow-hidden">
+        <div className="p-5">
+          <h3 className="text-lg font-semibold text-destructive mb-2">{title}</h3>
+          <p className="text-sm text-muted-foreground mb-4">{message}</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            Type <span className="font-bold text-foreground">{confirmWord}</span> to confirm:
+          </p>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={confirmWord}
+            className="w-full px-3 py-2 rounded-lg bg-muted border border-border focus:border-destructive focus:outline-none transition-colors text-sm"
+            autoFocus
+          />
+        </div>
+        <div className="flex gap-2 p-4 border-t border-border">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-border hover:bg-muted transition-colors text-sm font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => { if (input === confirmWord) { onConfirm(); setInput(''); } }}
+            disabled={input !== confirmWord}
+            className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground font-medium hover:bg-destructive/90 transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Meal Stepper Component ─────────────────────────────────────────────────
 function MealStepper({
   label,
@@ -101,7 +159,7 @@ function MealStepper({
   icon: string;
 }) {
   const step = (delta: number) => {
-    const newVal = Math.max(0, Math.min(1.5, +(value + delta).toFixed(2)));
+    const newVal = Math.max(0, Math.min(5, +(value + delta).toFixed(2)));
     onChange(newVal);
   };
 
@@ -292,6 +350,10 @@ export default function MessManagerApp() {
   const [closeMonthModalOpen, setCloseMonthModalOpen] = useState(false);
   const [bazarAssignModalOpen, setBazarAssignModalOpen] = useState(false);
   const [bazarAssignDate, setBazarAssignDate] = useState('');
+
+  // Confirm dialog states
+  const [confirmDeleteMember, setConfirmDeleteMember] = useState<{ open: boolean; id: string; name: string }>({ open: false, id: '', name: '' });
+  const [confirmDeleteMonth, setConfirmDeleteMonth] = useState<{ open: boolean; id: string; name: string }>({ open: false, id: '', name: '' });
 
   // Store
   const store = useStore();
@@ -1417,8 +1479,8 @@ export default function MessManagerApp() {
                       onClick={() => {
                         if (!isManager) {
                           alert("Only manager can perform this action");
-                        } else if (confirm(`Remove ${m.name}?`)) {
-                          removeMember(m.id);
+                        } else {
+                          setConfirmDeleteMember({ open: true, id: m.id, name: m.name });
                         }
                       }}
                       className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
@@ -1778,10 +1840,8 @@ export default function MessManagerApp() {
                   )}
                   <button 
                     onClick={() => {
-                      if (confirm(`Are you sure you want to permanently delete ${activeMonth.monthName}? All its data will be lost!`)) {
-                        store.deleteMonth(activeMonth.id);
-                        setMessage(`${activeMonth.monthName} deleted successfully.`);
-                        setTimeout(() => window.location.reload(), 1000);
+                      if (activeMonth) {
+                        setConfirmDeleteMonth({ open: true, id: activeMonth.id, name: activeMonth.monthName });
                       }
                     }}
                     className="w-full text-left px-4 py-2 rounded-lg bg-background border border-border hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors text-sm font-medium">
@@ -2253,6 +2313,7 @@ export default function MessManagerApp() {
     const now = new Date();
     const [monthStr, setMonthStr] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
     const [managerId, setManagerId] = useState(activeUserId || '');
+    const [rolloverBalances, setRolloverBalances] = useState(false);
 
     const handleSubmit = () => {
       if (!monthStr || !managerId) return;
@@ -2263,8 +2324,25 @@ export default function MessManagerApp() {
         month: 'long',
         year: 'numeric',
       });
-      createMonth(monthName, startDate, endDate, managerId);
+
+      let deposits: DepositEntry[] | undefined;
+      if (rolloverBalances && activeMonth) {
+        const summary = calcMonthSummary(activeMonth, members);
+        deposits = summary.memberSummaries
+          .filter((ms) => ms.balance > 0)
+          .map((ms) => ({
+            id: generateId(),
+            date: startDate,
+            memberId: ms.memberId,
+            amount: ms.balance,
+            note: `Balance rollover from ${activeMonth.monthName}`,
+            isAutoDeposit: true,
+          }));
+      }
+
+      createMonth(monthName, startDate, endDate, managerId, deposits);
       setMonthModalOpen(false);
+      setRolloverBalances(false);
     };
 
     return (
@@ -2285,6 +2363,22 @@ export default function MessManagerApp() {
               ))}
             </select>
           </div>
+          {activeMonth && (
+            <label className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border cursor-pointer">
+              <input
+                type="checkbox"
+                checked={rolloverBalances}
+                onChange={(e) => setRolloverBalances(e.target.checked)}
+                className="w-4 h-4 rounded accent-primary"
+              />
+              <div>
+                <p className="text-sm font-medium">Carry over current month balances</p>
+                <p className="text-xs text-muted-foreground">
+                  Members with surplus balance will have it added as a deposit in the new month
+                </p>
+              </div>
+            </label>
+          )}
           <button onClick={handleSubmit}
             className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors">
             Create Month
@@ -2620,6 +2714,31 @@ export default function MessManagerApp() {
       <CreateMonthModal />
       <CloseMonthModal />
       <BazarAssignModal />
+
+      {/* Confirm Dialogs */}
+      <ConfirmDialog
+        open={confirmDeleteMember.open}
+        onClose={() => setConfirmDeleteMember({ open: false, id: '', name: '' })}
+        onConfirm={() => {
+          removeMember(confirmDeleteMember.id);
+          setConfirmDeleteMember({ open: false, id: '', name: '' });
+        }}
+        title={`Remove ${confirmDeleteMember.name}?`}
+        message="This will permanently remove this member and all their meal, deposit, and cost records."
+        confirmWord="DELETE"
+      />
+      <ConfirmDialog
+        open={confirmDeleteMonth.open}
+        onClose={() => setConfirmDeleteMonth({ open: false, id: '', name: '' })}
+        onConfirm={() => {
+          store.deleteMonth(confirmDeleteMonth.id);
+          setConfirmDeleteMonth({ open: false, id: '', name: '' });
+          setTimeout(() => window.location.reload(), 1000);
+        }}
+        title={`Delete ${confirmDeleteMonth.name}?`}
+        message="This will permanently delete this month and all its data. This cannot be undone."
+        confirmWord="DELETE"
+      />
 
       {/* Close notification panel on outside click */}
       {notifOpen && (
