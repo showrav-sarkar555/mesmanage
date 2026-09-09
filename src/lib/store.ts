@@ -36,6 +36,8 @@ interface AppActions {
   createMonth: (monthName: string, startDate: string, endDate: string, managerId: string) => void;
   setActiveMonth: (id: string) => void;
   closeMonth: (nextManagerId: string, closingDateStr?: string) => void;
+  deleteMonth: (monthId: string) => void;
+  reopenMonth: (monthId: string) => void;
 
   // ── Meals ───────────────────────────────────────────
   setMealEntry: (date: string, memberId: string, mealType: 'breakfast' | 'lunch' | 'dinner', value: number) => void;
@@ -274,6 +276,34 @@ export const useStore = create<Store>()(
           members: updatedMembers,
         });
         get().addLog('MONTH', `Closed ${activeMonth.monthName} and opened ${newMonthName} with manager ${updatedMembers.find(m => m.id === newManagerId)?.name}`);
+        get().syncToCloud();
+      },
+
+      deleteMonth: (monthId) => {
+        set((state) => {
+          const monthToDelete = state.months.find(m => m.id === monthId);
+          if (!monthToDelete) return state;
+          
+          const newMonths = state.months.filter(m => m.id !== monthId);
+          let nextActiveId = state.activeMonthId;
+          if (state.activeMonthId === monthId) {
+            nextActiveId = newMonths.length > 0 ? newMonths[newMonths.length - 1].id : null;
+          }
+          return { months: newMonths, activeMonthId: nextActiveId };
+        });
+        get().addLog('MONTH', `Deleted a month record.`);
+        get().syncToCloud();
+      },
+
+      reopenMonth: (monthId) => {
+        set((state) => {
+          const newMonths = state.months.map(m => {
+            if (m.id === monthId) return { ...m, status: 'ACTIVE' as const };
+            return { ...m, status: 'ARCHIVED' as const };
+          });
+          return { months: newMonths, activeMonthId: monthId };
+        });
+        get().addLog('MONTH', `Re-opened month as ACTIVE.`);
         get().syncToCloud();
       },
 

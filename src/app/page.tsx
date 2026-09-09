@@ -1751,7 +1751,40 @@ export default function MessManagerApp() {
             </div>
             
             <div className="pt-4 mt-4 border-t border-border">
-              <h4 className="text-sm font-semibold text-destructive mb-2">Danger Zone</h4>
+              <h4 className="text-sm font-semibold text-destructive mb-4">Danger Zone</h4>
+              
+              {activeMonth && (
+                <div className="space-y-3 mb-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5">
+                  <h5 className="text-sm font-medium">Month Management: {activeMonth.monthName}</h5>
+                  {activeMonth.status === 'ARCHIVED' && (
+                    <button 
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to re-open ${activeMonth.monthName}? All other months will become archived.`)) {
+                          store.reopenMonth(activeMonth.id);
+                          setMessage(`${activeMonth.monthName} is now ACTIVE.`);
+                          setTimeout(() => window.location.reload(), 1000);
+                        }
+                      }}
+                      className="w-full text-left px-4 py-2 rounded-lg bg-background border border-border hover:bg-success/10 hover:text-success hover:border-success/30 transition-colors text-sm font-medium">
+                      <Icon name="Unlock" size={14} className="inline mr-2" />
+                      Re-open as Active Month
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => {
+                      if (confirm(`Are you sure you want to permanently delete ${activeMonth.monthName}? All its data will be lost!`)) {
+                        store.deleteMonth(activeMonth.id);
+                        setMessage(`${activeMonth.monthName} deleted successfully.`);
+                        setTimeout(() => window.location.reload(), 1000);
+                      }
+                    }}
+                    className="w-full text-left px-4 py-2 rounded-lg bg-background border border-border hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors text-sm font-medium">
+                    <Icon name="Trash2" size={14} className="inline mr-2" />
+                    Permanently Delete Month
+                  </button>
+                </div>
+              )}
+
               <button 
                 onClick={async () => {
                   if (confirm("Are you sure? This will wipe all current data and load the August 2026 demo data from the PDF.")) {
