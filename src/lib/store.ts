@@ -35,7 +35,7 @@ interface AppActions {
   // ── Months ──────────────────────────────────────────
   createMonth: (monthName: string, startDate: string, endDate: string, managerId: string) => void;
   setActiveMonth: (id: string) => void;
-  closeMonth: (nextManagerId?: string) => void;
+  closeMonth: (nextManagerId: string, closingDateStr?: string) => void;
 
   // ── Meals ───────────────────────────────────────────
   setMealEntry: (date: string, memberId: string, mealType: 'breakfast' | 'lunch' | 'dinner', value: number) => void;
@@ -207,21 +207,25 @@ export const useStore = create<Store>()(
 
       setActiveMonth: (id) => set({ activeMonthId: id }),
 
-      closeMonth: (nextManagerId) => {
+      closeMonth: (nextManagerId, closingDateStr) => {
         const state = get();
         const activeMonth = state.months.find((m) => m.id === state.activeMonthId);
         if (!activeMonth) return;
 
-        // Calculate summary for balance rollover
-        const summary = calcMonthSummary(activeMonth, state.members);
+        // If a closing date was provided, update the active month's end date first
+        const finalEndDate = closingDateStr || activeMonth.endDate;
+        const finalizedActiveMonth = { ...activeMonth, endDate: finalEndDate };
+
+        // Calculate summary for balance rollover using the finalized month
+        const summary = calcMonthSummary(finalizedActiveMonth, state.members);
 
         // Archive the current month
         const archivedMonths = state.months.map((m) =>
-          m.id === activeMonth.id ? { ...m, status: 'ARCHIVED' as const } : m
+          m.id === activeMonth.id ? { ...finalizedActiveMonth, status: 'ARCHIVED' as const } : m
         );
 
         // Create new month with balance rollover
-        const nextMonthDate = new Date(activeMonth.endDate + 'T00:00:00');
+        const nextMonthDate = new Date(finalEndDate + 'T00:00:00');
         nextMonthDate.setDate(nextMonthDate.getDate() + 1);
         const nextEndDate = new Date(nextMonthDate.getFullYear(), nextMonthDate.getMonth() + 1, 0);
         const newMonthName = nextMonthDate.toLocaleDateString('en-US', {

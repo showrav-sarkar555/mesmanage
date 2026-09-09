@@ -2259,11 +2259,15 @@ export default function MessManagerApp() {
   // Close Month Modal
   const CloseMonthModal = () => {
     const [nextManagerId, setNextManagerId] = useState(activeUserId || '');
+    const [closingDate, setClosingDate] = useState(() => {
+      if (!activeMonth) return today;
+      return today > activeMonth.endDate ? today : activeMonth.endDate;
+    });
 
     const handleSubmit = () => {
-      if (!nextManagerId) return;
-      if (confirm('Close current month and rollover balances to a new month? The selected user will become the Manager for the new month.')) {
-        closeMonth(nextManagerId);
+      if (!nextManagerId || !closingDate) return;
+      if (confirm(`Close current month on ${closingDate} and rollover balances to a new month? The selected user will become the Manager for the new month.`)) {
+        closeMonth(nextManagerId, closingDate);
         setCloseMonthModalOpen(false);
       }
     };
@@ -2274,6 +2278,12 @@ export default function MessManagerApp() {
           <p className="text-sm text-muted-foreground">
             Closing the month will archive the current records and create a new month with the rolled-over balances as deposits.
           </p>
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Closing Date (Last day of this month)</label>
+            <input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-muted border border-border focus:border-primary focus:outline-none transition-colors" />
+            <p className="text-xs text-muted-foreground mt-1">The new month will automatically start on the day after this date.</p>
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1.5">Assign Next Manager</label>
             <select value={nextManagerId} onChange={(e) => setNextManagerId(e.target.value)}
