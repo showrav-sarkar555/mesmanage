@@ -118,11 +118,11 @@ export async function generateMonthlyPDF(
     `Mess Balance: ${summary.messBalance.toFixed(2)} ৳`,
     `Mess Total Meal: ${summary.totalMeals.toFixed(2)}`,
     `Mess Total Deposit: ${summary.totalDeposits.toFixed(2)} ৳`,
-    `Mess Total Meal Cost: ${summary.totalMealCost.toFixed(2)} ৳৳`,
-    `Mess Meal Rate: ${summary.mealRate.toFixed(2)} ৳৳`,
-    `Total Shared Cost: ${summary.totalSharedCosts.toFixed(2)} ৳৳`,
-    `Total Individual Cost: ${summary.totalIndividualCosts.toFixed(2)} ৳৳`,
-    `Mess Total Cost(Meal+Other): ${summary.totalExpenses.toFixed(2)}৳`,
+    `Mess Total Meal Cost: ${summary.totalMealCost.toFixed(2)} ৳`,
+    `Mess Meal Rate: ${summary.mealRate.toFixed(2)} ৳`,
+    `Total Shared Cost: ${summary.totalSharedCosts.toFixed(2)} ৳`,
+    `Total Individual Cost: ${summary.totalIndividualCosts.toFixed(2)} ৳`,
+    `Mess Total Cost(Meal+Other): ${summary.totalExpenses.toFixed(2)} ৳`,
   ];
 
   for (const line of summaryLines) {
@@ -135,7 +135,7 @@ export async function generateMonthlyPDF(
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...coralRed);
-  doc.text('Member Summery Info Table', margin, y);
+  doc.text('Member Summary Info Table', margin, y);
   y += 8;
 
   const memberTableHead = [

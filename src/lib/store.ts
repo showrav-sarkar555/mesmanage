@@ -128,6 +128,22 @@ export const useStore = create<Store>()(
         const member = get().members.find((m) => m.id === id);
         set((s) => ({
           members: s.members.filter((m) => m.id !== id),
+          months: s.months.map((m) => ({
+            ...m,
+            meals: m.meals.filter((e) => e.memberId !== id),
+            deposits: m.deposits.filter((e) => e.memberId !== id),
+            mealCosts: m.mealCosts.filter((e) => e.shopperMemberId !== id),
+            otherCosts: m.otherCosts.map((c) => ({
+              ...c,
+              targetMemberIds: c.targetMemberIds.filter((mid) => mid !== id),
+            })),
+            bazarSchedule: Object.fromEntries(
+              Object.entries(m.bazarSchedule).map(([date, memberIds]) => [
+                date,
+                (memberIds as string[]).filter((mid) => mid !== id),
+              ])
+            ),
+          })),
         }));
         if (member) get().addLog('MEMBER', `Removed member: ${member.name}`);
         get().syncToCloud();
@@ -299,7 +315,8 @@ export const useStore = create<Store>()(
         set((state) => {
           const newMonths = state.months.map(m => {
             if (m.id === monthId) return { ...m, status: 'ACTIVE' as const };
-            return { ...m, status: 'ARCHIVED' as const };
+            if (m.id === state.activeMonthId && state.activeMonthId !== monthId) return { ...m, status: 'ARCHIVED' as const };
+            return m;
           });
           return { months: newMonths, activeMonthId: monthId };
         });
@@ -511,7 +528,7 @@ export const useStore = create<Store>()(
                 ? {
                     ...m,
                     mealCosts: m.mealCosts.map((c) =>
-                      c.id === id ? { ...cost, id, isAutoCreditedToDeposit: existingCost.isAutoCreditedToDeposit } : c
+                      c.id === id ? { ...cost, id, isAutoCreditedToDeposit: autoDeposit } : c
                     ),
                   }
                 : m
@@ -594,7 +611,14 @@ export const useStore = create<Store>()(
       importData: (json) => {
         try {
           const data = JSON.parse(json);
-          if (data.members && data.months) {
+          if (
+            data &&
+            typeof data === 'object' &&
+            Array.isArray(data.members) &&
+            data.members.every((m: any) => typeof m?.id === 'string' && typeof m?.name === 'string' && typeof m?.role === 'string') &&
+            Array.isArray(data.months) &&
+            data.months.every((m: any) => typeof m?.id === 'string' && typeof m?.monthName === 'string' && Array.isArray(m?.meals) && Array.isArray(m?.deposits))
+          ) {
             set({
               members: data.members,
               months: data.months,
@@ -672,9 +696,10 @@ export const useStore = create<Store>()(
       syncToCloud: async () => {
         try {
           const now = Date.now();
-          set({ lastUpdatedAt: now });
           const state = get();
+          set({ lastUpdatedAt: now });
           const payload = pickState(state);
+          payload.lastUpdatedAt = now;
           await fetch('/api/data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
