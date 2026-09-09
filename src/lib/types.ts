@@ -78,6 +78,7 @@ export interface AppState {
   isAuthenticated: boolean;
   loginTimestamp: number | null; // Unix ms — used for 7-day session expiry
   cloudSynced: boolean; // true once initial cloud load completes
+  messName: string; // e.g. "Castle Black"
   theme: 'light' | 'dark' | 'system';
   activityLog: ActivityLogEntry[];
   lastUpdatedAt?: number;

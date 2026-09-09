@@ -294,9 +294,11 @@ export default function MessManagerApp() {
     months,
     activeMonthId,
     activeUserId,
+    messName,
     theme,
     activityLog,
     setTheme,
+    setMessName,
     setActiveUser,
     setActiveMonth,
     setMealEntry,
@@ -401,7 +403,7 @@ export default function MessManagerApp() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-chart-4 flex items-center justify-center">
               <Icon name="UtensilsCrossed" size={16} className="text-white" />
             </div>
-            <h1 className="text-lg font-bold hidden sm:block">Mess Manager</h1>
+            <h1 className="text-lg font-bold hidden sm:block">{messName || 'Mess Manager'}</h1>
           </div>
         </div>
 
@@ -1397,7 +1399,7 @@ export default function MessManagerApp() {
     const handlePDF = async () => {
       if (!activeMonth) return;
       const { generateMonthlyPDF } = await import('@/lib/pdf-generator');
-      await generateMonthlyPDF(activeMonth, members);
+      await generateMonthlyPDF(activeMonth, members, messName);
     };
 
     const handleShare = async () => {
@@ -1561,6 +1563,7 @@ export default function MessManagerApp() {
   const ProfilePage = () => {
     const [name, setName] = useState(activeUser?.name || '');
     const [phone, setPhone] = useState(activeUser?.phone || '');
+    const [localMessName, setLocalMessName] = useState(messName || '');
     const [currentPin, setCurrentPin] = useState('');
     const [newPin, setNewPin] = useState('');
     const [confirmNewPin, setConfirmNewPin] = useState('');
@@ -1576,7 +1579,16 @@ export default function MessManagerApp() {
         setError('Name cannot be empty');
         return;
       }
+      if (isManager && !localMessName.trim()) {
+        setError('Mess name cannot be empty');
+        return;
+      }
+      
       store.updateMember(activeUser.id, { name: name.trim(), phone: phone.trim() });
+      if (isManager) {
+        setMessName(localMessName.trim());
+      }
+      
       setMessage('Profile updated successfully');
       setTimeout(() => setMessage(''), 3000);
     };
@@ -1632,6 +1644,29 @@ export default function MessManagerApp() {
             </button>
           </div>
         </div>
+
+        {isManager && (
+          <div className="glass-card p-6 space-y-6">
+            <h3 className="font-semibold flex items-center gap-2 border-b border-border pb-3">
+              <Icon name="Settings" size={20} className="text-primary" />
+              Mess Configuration
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Mess Name</label>
+                <input type="text" value={localMessName} onChange={(e) => setLocalMessName(e.target.value)}
+                  placeholder="e.g. Castle Black"
+                  className="w-full px-4 py-2.5 rounded-xl bg-muted border border-border focus:border-primary focus:outline-none transition-colors" />
+                <p className="text-xs text-muted-foreground mt-2">This name appears on the Dashboard and PDF reports.</p>
+              </div>
+              <button onClick={handleUpdateProfile}
+                className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors">
+                Save Mess Name
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="glass-card p-6 space-y-6">
           <h3 className="font-semibold flex items-center gap-2 border-b border-border pb-3">

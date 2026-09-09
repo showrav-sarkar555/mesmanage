@@ -59,8 +59,9 @@ interface AppActions {
   // ── Bazar Schedule ──────────────────────────────────
   setBazarSchedule: (date: string, memberIds: string[]) => void;
 
-  // ── Theme ───────────────────────────────────────────
+  // ── Theme & Mess Name ──────────────────────────────
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  setMessName: (name: string) => void;
 
   // ── Data Management ─────────────────────────────────
   exportData: () => string;
@@ -90,6 +91,7 @@ function pickState(s: AppState) {
     members: s.members,
     months: s.months,
     activeMonthId: s.activeMonthId,
+    messName: s.messName,
     theme: s.theme,
     activityLog: s.activityLog,
     lastUpdatedAt: s.lastUpdatedAt,
@@ -537,14 +539,18 @@ export const useStore = create<Store>()(
         get().syncToCloud();
       },
 
-      // ── Theme ───────────────────────────────────────────
+      // ── Theme & Mess Name ──────────────────────────────
       setTheme: (theme) => set({ theme }),
+      setMessName: (name) => {
+        set({ messName: name });
+        get().syncToCloud();
+      },
 
       // ── Data Management ─────────────────────────────────
       exportData: () => {
-        const { members, months, activeMonthId, activeUserId, theme, activityLog } = get();
+        const { members, months, activeMonthId, activeUserId, messName, theme, activityLog } = get();
         return JSON.stringify(
-          { members, months, activeMonthId, activeUserId, theme, activityLog },
+          { members, months, activeMonthId, activeUserId, messName, theme, activityLog },
           null,
           2
         );
@@ -559,6 +565,7 @@ export const useStore = create<Store>()(
               months: data.months,
               activeMonthId: data.activeMonthId || null,
               activeUserId: data.activeUserId || null,
+              messName: data.messName || 'Castle Black',
               theme: data.theme || 'dark',
               activityLog: data.activityLog || [],
             });
@@ -586,6 +593,7 @@ export const useStore = create<Store>()(
           isAuthenticated: false,
           loginTimestamp: null,
           cloudSynced: false,
+          messName: 'My Mess',
           theme: 'system',
           activityLog: [],
         });
@@ -667,6 +675,7 @@ export const useStore = create<Store>()(
               members: data.members,
               months: data.months,
               activeMonthId: data.activeMonthId || null,
+              messName: data.messName || 'Castle Black',
               theme: data.theme || 'dark',
               activityLog: data.activityLog || [],
               lastUpdatedAt: data.lastUpdatedAt || Date.now(),
@@ -694,6 +703,7 @@ export const useStore = create<Store>()(
         activeUserId: state.activeUserId,
         isAuthenticated: state.isAuthenticated,
         loginTimestamp: state.loginTimestamp,
+        messName: state.messName,
         theme: state.theme,
         activityLog: state.activityLog,
         lastUpdatedAt: state.lastUpdatedAt,

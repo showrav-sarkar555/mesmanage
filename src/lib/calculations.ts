@@ -2,6 +2,11 @@
 // Pure, isolated arithmetic utility functions for monthly mess accounting.
 // All functions are stateless and testable.
 
+/** Round to 2 decimal places to avoid floating-point display artifacts */
+function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
 import type {
   DailyMealEntry,
   DepositEntry,
@@ -198,16 +203,16 @@ export function calcMemberSummary(
   return {
     memberId: member.id,
     memberName: member.name,
-    totalMeals: mealData.total,
-    totalBreakfast: mealData.breakfast,
-    totalLunch: mealData.lunch,
-    totalDinner: mealData.dinner,
-    totalDeposit,
-    mealCost: memberMealCost,
-    sharedCost,
-    individualCost,
-    totalCost,
-    balance,
+    totalMeals: round2(mealData.total),
+    totalBreakfast: round2(mealData.breakfast),
+    totalLunch: round2(mealData.lunch),
+    totalDinner: round2(mealData.dinner),
+    totalDeposit: round2(totalDeposit),
+    mealCost: round2(memberMealCost),
+    sharedCost: round2(sharedCost),
+    individualCost: round2(individualCost),
+    totalCost: round2(totalCost),
+    balance: round2(balance),
   };
 }
 
@@ -232,14 +237,14 @@ export function calcMonthSummary(
   );
 
   return {
-    totalMeals,
-    totalMealCost,
-    mealRate,
-    totalDeposits,
-    totalSharedCosts,
-    totalIndividualCosts,
-    totalExpenses,
-    messBalance,
+    totalMeals: round2(totalMeals),
+    totalMealCost: round2(totalMealCost),
+    mealRate: round2(mealRate),
+    totalDeposits: round2(totalDeposits),
+    totalSharedCosts: round2(totalSharedCosts),
+    totalIndividualCosts: round2(totalIndividualCosts),
+    totalExpenses: round2(totalExpenses),
+    messBalance: round2(messBalance),
     memberSummaries,
   };
 }
