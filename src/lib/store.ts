@@ -423,6 +423,7 @@ export const useStore = create<Store>()(
         });
         const member = get().members.find((m) => m.id === deposit.memberId);
         get().addLog('DEPOSIT', `${member?.name || 'Unknown'} deposited ৳${deposit.amount}`);
+        get().syncToCloud();
       },
 
       updateDeposit: (id, deposit) => {
