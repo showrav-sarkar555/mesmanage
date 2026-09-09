@@ -568,6 +568,7 @@ export const useStore = create<Store>()(
               messName: data.messName || 'Castle Black',
               theme: data.theme || 'dark',
               activityLog: data.activityLog || [],
+              lastUpdatedAt: Date.now(),
             });
             get().syncToCloud();
             return true;
@@ -580,7 +581,7 @@ export const useStore = create<Store>()(
 
       resetToDemo: () => {
         const demoData = generateDemoData();
-        set(demoData);
+        set({ ...demoData, lastUpdatedAt: Date.now() });
         get().syncToCloud();
       },
 
@@ -596,6 +597,7 @@ export const useStore = create<Store>()(
           messName: 'My Mess',
           theme: 'system',
           activityLog: [],
+          lastUpdatedAt: Date.now(),
         });
         get().syncToCloud();
       },
@@ -627,20 +629,25 @@ export const useStore = create<Store>()(
       },
 
       // ── Cloud Sync ─────────────────────────────────────────
+      // Strategy: Cloud is ALWAYS the single source of truth.
+      // syncToCloud: push local state to cloud with a fresh timestamp.
+      // loadFromCloud: ALWAYS pull cloud data and overwrite local (preserving session).
       cloudSynced: false,
 
       syncToCloud: async () => {
         try {
-          set({ lastUpdatedAt: Date.now() });
+          const now = Date.now();
+          set({ lastUpdatedAt: now });
           const state = get();
+          const payload = pickState(state);
           await fetch('/api/data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(pickState(state)),
+            body: JSON.stringify(payload),
             cache: 'no-store',
           });
         } catch {
-          // Silently fail - local state is always the source of truth locally
+          // Silently fail — local persist still works
         }
       },
 
@@ -648,28 +655,19 @@ export const useStore = create<Store>()(
         try {
           const res = await fetch('/api/data', { cache: 'no-store' });
           if (!res.ok) {
-            // No cloud data yet — push our current state up to initialise the DB
-            const state = get();
-            if (state.members.length > 0) {
-              await get().syncToCloud();
+            // No cloud data yet — push our current state to initialise
+            if (res.status === 404 || res.status === 503) {
+              const state = get();
+              if (state.members.length > 0) {
+                await get().syncToCloud();
+              }
             }
             set({ cloudSynced: true });
             return;
           }
           const { ok, data } = await res.json();
           if (ok && data && Array.isArray(data.members) && Array.isArray(data.months)) {
-            const currentLastUpdated = get().lastUpdatedAt || 0;
-            const cloudLastUpdated = data.lastUpdatedAt || 0;
-            
-            if (currentLastUpdated > cloudLastUpdated) {
-              // Local state is strictly newer than the cloud (e.g. an aborted POST).
-              // Heal the cloud by forcing a push of our newer local state.
-              get().syncToCloud();
-              set({ cloudSynced: true });
-              return; // Do NOT overwrite local state with stale cloud data
-            }
-
-            // Cloud has data — merge it in, but preserve local auth session
+            // Cloud ALWAYS wins — overwrite local state, but preserve auth session
             const { isAuthenticated, activeUserId, loginTimestamp } = get();
             set({
               members: data.members,
@@ -679,7 +677,7 @@ export const useStore = create<Store>()(
               theme: data.theme || 'dark',
               activityLog: data.activityLog || [],
               lastUpdatedAt: data.lastUpdatedAt || Date.now(),
-              // Preserve local session — don't log out just because we reloaded
+              // Preserve local session — don't log out on sync
               isAuthenticated,
               activeUserId,
               loginTimestamp,

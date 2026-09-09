@@ -332,6 +332,25 @@ export default function MessManagerApp() {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
+
+    // ── Periodic cloud sync ────────────────────────────────
+    // Poll every 30 seconds so all devices stay in sync
+    const syncInterval = setInterval(() => {
+      loadFromCloud();
+    }, 30_000);
+
+    // Also re-sync when the user returns to the tab / app
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadFromCloud();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(syncInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   // Apply theme
