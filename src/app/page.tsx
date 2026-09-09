@@ -276,12 +276,7 @@ export default function MessManagerApp() {
   const [notifOpen, setNotifOpen] = useState(false);
 
   // Notification read tracking (per device, not cloud-synced)
-  const [lastReadNotifAt, setLastReadNotifAt] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      return Number(localStorage.getItem('mess-notif-read-' + (store.activeUserId || '')) || '0');
-    }
-    return 0;
-  });
+  const [lastReadNotifAt, setLastReadNotifAt] = useState<number>(0);
 
   // Modal states
   const [mealModalOpen, setMealModalOpen] = useState(false);
@@ -347,6 +342,12 @@ export default function MessManagerApp() {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
   }, []);
+
+  useEffect(() => {
+    if (activeUserId && typeof window !== 'undefined') {
+      setLastReadNotifAt(Number(localStorage.getItem('mess-notif-read-' + activeUserId) || '0'));
+    }
+  }, [activeUserId]);
 
   // ── Periodic cloud sync (pauses when modals are open) ──────────
   useEffect(() => {
@@ -475,8 +476,7 @@ export default function MessManagerApp() {
               <Icon name="Bell" size={20} />
               {(() => {
                 // Show red dot only if there are notifications newer than the last read time
-                const readAt = lastReadNotifAt || (typeof window !== 'undefined' ? Number(localStorage.getItem('mess-notif-read-' + (activeUserId || '')) || '0') : 0);
-                const hasUnread = activityLog.some(log => new Date(log.timestamp).getTime() > readAt);
+                const hasUnread = activityLog.some(log => new Date(log.timestamp).getTime() > lastReadNotifAt);
                 return hasUnread ? (
                   <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive animate-pulse" />
                 ) : null;
