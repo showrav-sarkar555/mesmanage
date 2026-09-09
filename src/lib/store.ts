@@ -66,7 +66,7 @@ interface AppActions {
   // ── Data Management ─────────────────────────────────
   exportData: () => string;
   importData: (json: string) => boolean;
-  resetToDemo: () => void;
+  resetToDemo: () => Promise<void>;
   clearAll: () => void;
 
   // ── Activity Log ────────────────────────────────────
@@ -579,10 +579,10 @@ export const useStore = create<Store>()(
         }
       },
 
-      resetToDemo: () => {
+      resetToDemo: async () => {
         const demoData = generateDemoData();
         set({ ...demoData, lastUpdatedAt: Date.now() });
-        get().syncToCloud();
+        await get().syncToCloud();
       },
 
       clearAll: () => {
