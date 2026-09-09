@@ -274,6 +274,9 @@ export default function MessManagerApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
+  // Notification read tracking (per device, not cloud-synced)
+  const [lastReadNotifAt, setLastReadNotifAt] = useState<number>(0);
+
   // Modal states
   const [mealModalOpen, setMealModalOpen] = useState(false);
   const [mealEditDate, setMealEditDate] = useState<string | null>(null); // pre-select date for editing
@@ -451,13 +454,27 @@ export default function MessManagerApp() {
           {/* Notification Bell */}
           <div className="relative">
             <button
-              onClick={() => setNotifOpen(!notifOpen)}
+              onClick={() => {
+                if (!notifOpen) {
+                  // Mark all current notifications as read when opening
+                  setLastReadNotifAt(Date.now());
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('mess-notif-read-' + (activeUserId || ''), String(Date.now()));
+                  }
+                }
+                setNotifOpen(!notifOpen);
+              }}
               className="p-2 rounded-lg hover:bg-muted transition-colors relative"
             >
               <Icon name="Bell" size={20} />
-              {activityLog.length > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive animate-pulse" />
-              )}
+              {(() => {
+                // Show red dot only if there are notifications newer than the last read time
+                const readAt = lastReadNotifAt || (typeof window !== 'undefined' ? Number(localStorage.getItem('mess-notif-read-' + (activeUserId || '')) || '0') : 0);
+                const hasUnread = activityLog.some(log => new Date(log.timestamp).getTime() > readAt);
+                return hasUnread ? (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive animate-pulse" />
+                ) : null;
+              })()}
             </button>
             {notifOpen && (
               <div className="fixed sm:absolute inset-x-4 top-[70px] sm:inset-auto sm:right-0 sm:top-12 w-auto sm:w-80 max-w-[400px] glass-card rounded-xl shadow-2xl border border-border overflow-hidden z-[100]">
@@ -864,7 +881,9 @@ export default function MessManagerApp() {
     if (!activeMonth) return <EmptyState />;
 
     const dates = getDaysInRange(activeMonth.startDate, activeMonth.endDate);
-    const recentDates = dates.filter((d) => d <= today).slice(-7).reverse();
+    // Show last 7 days within the month, capped at today or endDate (whichever is earlier)
+    const capDate = today > activeMonth.endDate ? activeMonth.endDate : today;
+    const recentDates = dates.filter((d) => d <= capDate).slice(-7).reverse();
 
     const openMealEdit = (date: string, memberId?: string) => {
       if (!isManager) { alert("Only manager can perform this action"); return; }
