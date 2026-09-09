@@ -1665,6 +1665,21 @@ export default function MessManagerApp() {
                 Save Mess Name
               </button>
             </div>
+            
+            <div className="pt-4 mt-4 border-t border-border">
+              <h4 className="text-sm font-semibold text-destructive mb-2">Danger Zone</h4>
+              <button 
+                onClick={() => {
+                  if (confirm("Are you sure? This will wipe all current data and load the August 2026 demo data from the PDF.")) {
+                    store.resetToDemo();
+                    setMessage('Data reset to August Demo successfully!');
+                    setTimeout(() => window.location.reload(), 1500);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-destructive/10 text-destructive font-medium hover:bg-destructive hover:text-destructive-foreground transition-colors text-sm">
+                Reset to August Demo Data
+              </button>
+            </div>
           </div>
         )}
 
